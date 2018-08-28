@@ -1,17 +1,16 @@
 package org.marvin.repl
 
-import java.io.{FileInputStream, InputStream}
 import java.util.logging.Logger
 
-import io.grpc.netty.NettyServerBuilder
+import io.grpc.stub.StreamObserver
 import io.grpc.{Server, ServerBuilder}
-import main.scala.org.marvin.repl.{CommandRequest, LoggerReply, ToolboxGrpc}
-import sourcecode.File
+import main.scala.org.marvin.repl.{CommandRequest, LoggerReply, NotebookGrpc, ToolboxGrpc}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.sys.process.{Process, ProcessIO, ProcessLogger}
 
 
-object ReplServer{
+object ReplServer {
   private val logger = Logger.getLogger(classOf[ReplServer].getName)
 
   def main(args: Array[String]): Unit = {
@@ -33,8 +32,8 @@ class ReplServer(executionContext: ExecutionContext) {
   private def start(): Unit = {
     server = ServerBuilder
       .forPort(ReplServer.port)
-      .useTransportSecurity(CC, PK)
-      .addService(ToolboxGrpc.bindService(new ReplService, executionContext))
+      //.useTransportSecurity(CC, PK)
+      .addService(NotebookGrpc.bindService(new NotebookService, executionContext))
       .build
       .start
 
@@ -65,6 +64,23 @@ class ReplServer(executionContext: ExecutionContext) {
       val reply = LoggerReply(logInfo = "Hello " + req.cmd)
       Future.successful(reply)
     }
+  }
+
+  private class NotebookService extends NotebookGrpc.Notebook {
+    override def notebookControl(req: CommandRequest, responseObserver: StreamObserver[LoggerReply]): Unit = {
+
+      println("Notebook subiu!!")
+
+      val pb = Process(req.cmd)
+
+      while (true) {
+        Thread.sleep(200)
+        var lines = pb.lineStream
+        for (line <- lines)
+          responseObserver.onNext(LoggerReply(logInfo = line))
+      }
+    }
+
   }
 
 }
