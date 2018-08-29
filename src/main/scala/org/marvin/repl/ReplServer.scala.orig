@@ -4,10 +4,17 @@ import java.util.logging.Logger
 
 import io.grpc.stub.StreamObserver
 import io.grpc.{Server, ServerBuilder}
-import main.scala.org.marvin.repl.{CommandRequest, LoggerReply, ToolboxGrpc, NotebookGrpc}
+<<<<<<< Updated upstream
+import main.scala.org.marvin.repl.{CommandRequest, LoggerReply, NotebookGrpc, ToolboxGrpc}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.sys.process.{Process, ProcessIO, ProcessLogger}
+=======
+import main.scala.org.marvin.repl.{CommandRequest, LoggerReply, ToolboxGrpc}
+
+import scala.concurrent.ExecutionContext
 import scala.sys.process.Process
+>>>>>>> Stashed changes
 
 
 object ReplServer {
@@ -32,7 +39,7 @@ class ReplServer(executionContext: ExecutionContext) {
   private def start(): Unit = {
     server = ServerBuilder
       .forPort(ReplServer.port)
-      .useTransportSecurity(CC, PK)
+      //.useTransportSecurity(CC, PK)
       .addService(NotebookGrpc.bindService(new NotebookService, executionContext))
       .build
       .start
@@ -60,14 +67,23 @@ class ReplServer(executionContext: ExecutionContext) {
   }
 
   private class ReplService extends ToolboxGrpc.Toolbox {
-    override def toolboxControl(req: CommandRequest): Future[LoggerReply] = {
-      val reply = LoggerReply(logInfo = "Hello " + req.cmd)
-      Future.successful(reply)
+    override def toolboxControl(req: CommandRequest, responseObserver: StreamObserver[LoggerReply]): Unit = {
+      println("test message !!!!")
+      val pb = Process(req.cmd)
+
+      while (true) {
+        Thread.sleep(200)
+        var lines = pb.lineStream
+        for (line <- lines)
+          responseObserver.onNext(LoggerReply(logInfo = line))
+      }
     }
   }
 
   private class NotebookService extends NotebookGrpc.Notebook {
     override def notebookControl(req: CommandRequest, responseObserver: StreamObserver[LoggerReply]): Unit = {
+
+      println("Notebook subiu!!")
 
       val pb = Process(req.cmd)
 
